@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>莆田海丝育人资源图谱</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --c-ocean:#0A4D68;
+  --c-ocean-light:#0E6B8C;
+  --c-ocean-pale:#E8F4F8;
+  --c-silk:#C49B2A;
+  --c-silk-light:#D4AE3E;
+  --c-silk-pale:#FFF8E7;
+  --c-red:#B83B2E;
+  --c-green:#2D7D46;
+  --c-purple:#6B4C9A;
+  --c-teal:#1A7A6D;
+  --c-orange:#C06520;
+  --c-blue:#2E6BA4;
+  --c-bg:#F5F2EC;
+  --shadow:0 2px 12px rgba(10,77,104,0.12);
+  --radius:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans SC',sans-serif;background:var(--c-bg);color:#333;overflow:hidden;height:100vh;}
+
+.header{
+  background:linear-gradient(135deg,var(--c-ocean) 0%,var(--c-ocean-light) 100%);
+  padding:14px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:relative;z-index:1001;
+}
+.header::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--c-silk),var(--c-silk-light),var(--c-silk));
+}
+.header h1{
+  font-family:'Noto Serif SC',serif;font-size:18px;font-weight:700;color:#fff;
+  letter-spacing:2px;
+  text-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+.header .subtitle{font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px;letter-spacing:1px;}
+.header .badge{
+  background:var(--c-silk);color:#fff;font-size:12px;font-weight:600;
+  padding:4px 12px;border-radius:20px;white-space:nowrap;
+}
+
+.toolbar{
+  background:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;
+  border-bottom:1px solid #e0ddd6;position:relative;z-index:1000;
+  flex-wrap:wrap;
+}
+.cat-btn{
+  padding:6px 14px;border-radius:20px;border:1.5px solid #d0cdc6;
+  background:#fff;font-size:12px;color:#666;cursor:pointer;
+  transition:all .25s;white-space:nowrap;font-weight:500;
+}
+.cat-btn:hover{border-color:var(--c-ocean);color:var(--c-ocean);}
+.cat-btn.active{background:var(--c-ocean);color:#fff;border-color:var(--c-ocean);}
+
+.search-box{
+  position:relative;flex:1;min-width:200px;
+}
+.search-input{
+  width:100%;padding:8px 14px 8px 36px;border:1.5px solid #d0cdc6;
+  border-radius:10px;font-size:13px;background:#FAFAF7;
+  font-family:'Noto Sans SC',sans-serif;color:#333;
+  transition:border-color .2s;outline:none;
+}
+.search-input:focus{border-color:var(--c-ocean);background:#fff;}
+.search-icon{
+  position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  width:16px;height:16px;opacity:0.4;
+}
+.dropdown{
+  position:absolute;top:100%;left:0;right:0;
+  background:#fff;border:1px solid #e0ddd6;border-radius:10px;
+  max-height:360px;overflow-y:auto;z-index:2000;
+  box-shadow:var(--shadow);display:none;margin-top:4px;
+}
+.dropdown.show{display:block;}
+.dd-group{padding:6px 0;}
+.dd-group-title{
+  padding:6px 14px;font-size:11px;font-weight:600;color:#999;
+  text-transform:uppercase;letter-spacing:1px;
+  background:#FAFAF7;border-bottom:1px solid #f0ede6;
+}
+.dd-item{
+  padding:10px 14px;font-size:13px;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  transition:background .15s;border-bottom:1px solid #f5f3ee;
+}
+.dd-item:last-child{border-bottom:none;}
+.dd-item:hover{background:var(--c-ocean-pale);}
+.dd-item .dot{
+  width:10px;height:10px;border-radius:50%;flex-shrink:0;
+}
+.dd-item .name{flex:1;color:#333;}
+.dd-item .cat-label{font-size:11px;color:#999;flex-shrink:0;}
+
+#map{width:100%;height:calc(100vh - 108px);}
+
+.legend{
+  position:absolute;bottom:20px;left:12px;z-index:999;
+  background:rgba(255,255,255,0.96);border-radius:var(--radius);
+  padding:12px 16px;font-size:12px;box-shadow:var(--shadow);
+  backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.8);
+}
+.legend-title{font-weight:600;color:var(--c-ocean);margin-bottom:8px;font-size:11px;letter-spacing:1px;}
+.legend-item{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.legend-item:last-child{margin-bottom:0;}
+.legend-dot{width:10px;height:10px;border-radius:50%;}
+.legend-label{color:#555;}
+
+.tile-switch{
+  position:absolute;top:12px;right:12px;z-index:999;
+  background:rgba(255,255,255,0.96);border-radius:8px;
+  padding:7px 12px;font-size:12px;box-shadow:var(--shadow);
+  cursor:pointer;border:1px solid #e0ddd6;color:#555;
+  backdrop-filter:blur(8px);font-weight:500;
+  transition:all .2s;
+}
+.tile-switch:hover{background:#fff;color:var(--c-ocean);border-color:var(--c-ocean);}
+
+.reset-btn{
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  z-index:999;background:var(--c-silk);color:#fff;
+  border-radius:20px;padding:7px 18px;font-size:12px;font-weight:600;
+  box-shadow:var(--shadow);cursor:pointer;border:none;
+  display:none;transition:all .2s;
+  font-family:'Noto Sans SC',sans-serif;
+}
+.reset-btn:hover{background:var(--c-silk-light);}
+.reset-btn.show{display:block;}
+
+.leaflet-popup-content-wrapper{
+  border-radius:var(--radius)!important;
+  box-shadow:var(--shadow)!important;
+  border:none!important;
+}
+.leaflet-popup-content{margin:0!important;padding:0!important;}
+.leaflet-popup-tip{box-shadow:none!important;}
+
+.popup-card{padding:16px 18px;min-width:220px;}
+.popup-num{
+  display:inline-block;font-size:11px;font-weight:600;
+  padding:2px 8px;border-radius:10px;margin-bottom:6px;
+}
+.popup-name{
+  font-family:'Noto Serif SC',serif;font-size:16px;font-weight:700;
+  color:var(--c-ocean);margin-bottom:4px;line-height:1.4;
+}
+.popup-cat{font-size:12px;color:#999;margin-bottom:14px;}
+.popup-nav{display:flex;gap:8px;}
+.popup-nav a{
+  flex:1;text-align:center;padding:10px 0;border-radius:8px;
+  text-decoration:none;font-size:13px;font-weight:600;color:#fff;
+  transition:opacity .2s;
+}
+.popup-nav a:hover{opacity:0.85;}
+.popup-nav .gaode{background:var(--c-green);}
+.popup-nav .baidu{background:var(--c-ocean);}
+
+@media(max-width:600px){
+  .header h1{font-size:15px;letter-spacing:1px;}
+  .header .subtitle{display:none;}
+  .toolbar{padding:8px 10px;gap:6px;}
+  .cat-btn{padding:5px 10px;font-size:11px;}
+  .search-box{min-width:140px;}
+  #map{height:calc(100vh - 96px);}
+  .legend{bottom:12px;left:8px;padding:8px 12px;font-size:11px;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>莆田海丝育人资源图谱</h1>
+    <div class="subtitle">一核六维 · 覆盖莆田全域</div>
+  </div>
+  <div class="badge" id="countBadge">56 个点位</div>
+</div>
+
+<div class="toolbar">
+  <div class="cat-btn active" data-cat="all">全部</div>
+  <div class="cat-btn" data-cat="华侨文化">华侨文化</div>
+  <div class="cat-btn" data-cat="海防文化">海防文化</div>
+  <div class="cat-btn" data-cat="至善文化">至善文化</div>
+  <div class="cat-btn" data-cat="耕读文化">耕读文化</div>
+  <div class="cat-btn" data-cat="非遗文化">非遗文化</div>
+  <div class="cat-btn" data-cat="绿色文化">绿色文化</div>
+  <div class="search-box">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input class="search-input" id="searchInput" type="text" placeholder="搜索景点名称...">
+    <div class="dropdown" id="dropdown"></div>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+var CAT_COLORS = {
+  '华侨文化':'#C06520',
+  '海防文化':'#B83B2E',
+  '至善文化':'#6B4C9A',
+  '耕读文化':'#2E6BA4',
+  '非遗文化':'#C49B2A',
+  '绿色文化':'#2D7D46'
+};
+
+var spots = [
+  {n:"莆田侨批博物馆",lat:25.4365,lng:119.0095,c:"华侨文化"},
+  {n:"萝苜田历史文化街区",lat:25.4540,lng:119.1170,c:"华侨文化"},
+  {n:"涵江华侨古厝群",lat:25.4580,lng:119.1200,c:"华侨文化"},
+  {n:"后黄村",lat:25.3650,lng:119.0650,c:"华侨文化"},
+  {n:"莆田华侨纪念馆",lat:25.4400,lng:119.0120,c:"华侨文化"},
+  {n:"侨乡创业展示馆",lat:25.4560,lng:119.1150,c:"华侨文化"},
+  {n:"双福村侨厝",lat:25.4620,lng:119.1250,c:"华侨文化"},
+  {n:"莆田侨史陈列室",lat:25.4380,lng:119.0080,c:"华侨文化"},
+  {n:"东大村华侨纪念馆",lat:25.4650,lng:119.1300,c:"华侨文化"},
+  {n:"后黄村南洋风情",lat:25.3660,lng:119.0670,c:"华侨文化"},
+
+  {n:"闽中革命根据地纪念馆",lat:25.4320,lng:119.0050,c:"海防文化"},
+  {n:"平海卫城抗倭遗址",lat:25.2130,lng:119.2350,c:"海防文化"},
+  {n:"莆禧古城抗倭遗址",lat:25.2800,lng:119.1500,c:"海防文化"},
+  {n:"江口革命旧址",lat:25.4900,lng:119.1600,c:"海防文化"},
+  {n:"东岩山革命纪念园",lat:25.4420,lng:119.0110,c:"海防文化"},
+  {n:"闽中烈士陵园",lat:25.4350,lng:119.0070,c:"海防文化"},
+  {n:"闽中支队司令部旧址",lat:25.4700,lng:119.0300,c:"海防文化"},
+  {n:"闽中工农游击队驻地旧址",lat:25.5000,lng:119.0400,c:"海防文化"},
+  {n:"枫亭抗倭遗址",lat:25.3450,lng:118.7650,c:"海防文化"},
+  {n:"古卫城遗址",lat:25.2150,lng:119.2380,c:"海防文化"},
+  {n:"平海天后宫",lat:25.2100,lng:119.2320,c:"海防文化"},
+
+  {n:"湄洲妈祖祖庙",lat:25.0867,lng:119.0778,c:"至善文化"},
+  {n:"贤良港天后祖祠",lat:25.1100,lng:119.0600,c:"至善文化"},
+  {n:"妈祖源流博物馆",lat:25.0880,lng:119.0790,c:"至善文化"},
+  {n:"妈祖文化研究院",lat:25.0900,lng:119.0770,c:"至善文化"},
+  {n:"妈祖平安里",lat:25.0850,lng:119.0760,c:"至善文化"},
+  {n:"北岸妈祖文化广场",lat:25.1200,lng:119.0650,c:"至善文化"},
+  {n:"妈祖文创展示中心",lat:25.0870,lng:119.0800,c:"至善文化"},
+  {n:"妈祖志愿服务基地",lat:25.0890,lng:119.0810,c:"至善文化"},
+  {n:"枫亭会心书院",lat:25.3400,lng:118.7600,c:"至善文化"},
+  {n:"古书院群",lat:25.4340,lng:119.0060,c:"至善文化"},
+
+  {n:"兴化府历史文化街区",lat:25.4350,lng:119.0080,c:"耕读文化"},
+  {n:"莆田御史文化陈列馆",lat:25.4330,lng:119.0070,c:"耕读文化"},
+  {n:"莆田文庙",lat:25.4345,lng:119.0075,c:"耕读文化"},
+  {n:"三清殿耕读文化区",lat:25.4355,lng:119.0085,c:"耕读文化"},
+  {n:"古谯楼历史展示点",lat:25.4340,lng:119.0065,c:"耕读文化"},
+  {n:"东山书院遗址",lat:25.4410,lng:119.0100,c:"耕读文化"},
+  {n:"埭里古厝耕读馆",lat:25.3700,lng:119.0550,c:"耕读文化"},
+  {n:"莆田市图书馆地方文献馆",lat:25.4390,lng:119.0150,c:"耕读文化"},
+
+  {n:"莆田木雕传习所",lat:25.3600,lng:119.0800,c:"非遗文化"},
+  {n:"莆仙戏传承保护中心",lat:25.4360,lng:119.0100,c:"非遗文化"},
+  {n:"妈祖祭典非遗基地",lat:25.0875,lng:119.0785,c:"非遗文化"},
+  {n:"莆田金银工艺馆",lat:25.3580,lng:119.0780,c:"非遗文化"},
+  {n:"龙眼木雕大师工作室",lat:25.3560,lng:119.0760,c:"非遗文化"},
+  {n:"传统民居营造技艺馆",lat:25.3650,lng:119.0620,c:"非遗文化"},
+  {n:"红团制作非遗体验点",lat:25.4300,lng:119.0040,c:"非遗文化"},
+  {n:"莆田非遗展示中心",lat:25.4380,lng:119.0130,c:"非遗文化"},
+  {n:"枫亭灯彩非遗馆",lat:25.3420,lng:118.7620,c:"非遗文化"},
+  {n:"传统家具制作技艺传习所",lat:25.3560,lng:118.6800,c:"非遗文化"},
+  {n:"碗洋村古窑",lat:25.3500,lng:118.7400,c:"非遗文化"},
+
+  {n:"木兰溪治理展示馆",lat:25.4200,lng:119.0000,c:"绿色文化"},
+  {n:"木兰陂国家水利风景区",lat:25.3950,lng:119.0250,c:"绿色文化"},
+  {n:"绶溪公园生态研学基地",lat:25.4500,lng:119.0200,c:"绿色文化"},
+  {n:"东圳水库生态教育点",lat:25.4600,lng:118.9500,c:"绿色文化"},
+  {n:"九鲤湖生态保护区",lat:25.5200,lng:118.8700,c:"绿色文化"},
+  {n:"莆田市生态环境教育馆",lat:25.4420,lng:119.0140,c:"绿色文化"},
+  {n:"城市绿心田园研学基地",lat:25.4100,lng:119.0350,c:"绿色文化"},
+  {n:"荔枝林带生态体验点",lat:25.3800,lng:119.0500,c:"绿色文化"},
+  {n:"幸福河湖研学基地",lat:25.4050,lng:119.0100,c:"绿色文化"},
+  {n:"木兰溪全流域生态廊道",lat:25.4150,lng:118.9800,c:"绿色文化"}
+];
+
+spots.forEach(function(s,i){s.id=i;});
+
+var map = L.map('map',{zoomControl:true}).setView([25.35,119.00],10);
+
+var tileRoad = L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',{
+  subdomains:['1','2','3','4'],maxZoom:18,attribution:'高德地图'
+});
+var tileSat = L.tileLayer('https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',{
+  subdomains:['1','2','3','4'],maxZoom:18,attribution:'高德卫星'
+});
+tileRoad.addTo(map);
+var isSat = false;
+
+var switchEl = document.createElement('div');
+switchEl.className='tile-switch';
+switchEl.textContent='卫星图';
+switchEl.onclick=function(){
+  if(!isSat){map.removeLayer(tileRoad);tileSat.addTo(map);isSat=true;switchEl.textContent='路线图';}
+  else{map.removeLayer(tileSat);tileRoad.addTo(map);isSat=false;switchEl.textContent='卫星图';}
+};
+document.getElementById('map').appendChild(switchEl);
+
+var resetEl = document.createElement('button');
+resetEl.className='reset-btn';
+resetEl.textContent='显示全部点位';
+resetEl.onclick=function(){
+  filterCat('all');
+  document.querySelectorAll('.cat-btn').forEach(function(b){b.classList.toggle('active',b.dataset.cat==='all');});
+  highlightedId=-1;resetEl.classList.remove('show');
+};
+document.getElementById('map').appendChild(resetEl);
+
+var legHTML='<div class="legend-title">资源维度</div>';
+Object.keys(CAT_COLORS).forEach(function(k){
+  legHTML+='<div class="legend-item"><div class="legend-dot" style="background:'+CAT_COLORS[k]+'"></div><div class="legend-label">'+k+'</div></div>';
+});
+var legEl=document.createElement('div');legEl.className='legend';legEl.innerHTML=legHTML;
+document.getElementById('map').appendChild(legEl);
+
+var markers=[];
+var curCat='all';
+var highlightedId=-1;
+
+function makeIcon(s,idx,highlighted){
+  var size=highlighted?34:26;
+  var bg=CAT_COLORS[s.c];
+  var border=highlighted?'3px solid #fff':'2px solid rgba(255,255,255,0.9)';
+  var shadow=highlighted?'0 2px 8px rgba(0,0,0,0.4)':'0 1px 4px rgba(0,0,0,0.25)';
+  var fs=highlighted?13:11;
+  return L.divIcon({
+    className:'',
+    html:'<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+bg+';color:#fff;font-size:'+fs+'px;font-weight:700;display:flex;align-items:center;justify-content:center;border:'+border+';box-shadow:'+shadow+';transition:all .3s;">'+(idx+1)+'</div>',
+    iconSize:[size,size],iconAnchor:[size/2,size/2]
+  });
+}
+
+function makePopup(s,idx){
+  var col=CAT_COLORS[s.c];
+  return '<div class="popup-card">'
+    +'<div class="popup-num" style="background:'+col+'22;color:'+col+';">No.'+(idx+1)+'</div>'
+    +'<div class="popup-name">'+s.n+'</div>'
+    +'<div class="popup-cat">'+s.c+'</div>'
+    +'<div class="popup-nav">'
+    +'<a class="gaode" href="https://uri.amap.com/marker?position='+s.lng+','+s.lat+'&name='+encodeURIComponent(s.n)+'&callnative=1" target="_blank">高德导航</a>'
+    +'<a class="baidu" href="https://api.map.baidu.com/marker?location='+s.lat+','+s.lng+'&title='+encodeURIComponent(s.n)+'&content='+encodeURIComponent(s.n)+'&output=html&coord_type=wgs84&src=webapp.putian.haisi" target="_blank">百度导航</a>'
+    +'</div></div>';
+}
+
+function render(cat, focusId){
+  markers.forEach(function(m){map.removeLayer(m);});
+  markers=[];
+  var list=[];
+  spots.forEach(function(s,i){
+    if(focusId>=0){if(s.id===focusId)list.push({s:s,i:i});}
+    else if(cat==='all'||s.c===cat)list.push({s:s,i:i});
+  });
+  list.forEach(function(item){
+    var s=item.s,i=item.i;
+    var hl=(focusId>=0&&s.id===focusId);
+    var icon=makeIcon(s,i,hl);
+    var m=L.marker([s.lat,s.lng],{icon:icon}).addTo(map);
+    m.bindPopup(makePopup(s,i),{maxWidth:280,className:''});
+    if(hl)m.openPopup();
+    markers.push(m);
+  });
+  document.getElementById('countBadge').textContent=list.length+' 个点位';
+  if(focusId>=0){
+    var fs=spots[focusId];
+    map.setView([fs.lat,fs.lng],15,{animate:true});
+    resetEl.classList.add('show');
+  } else {
+    resetEl.classList.remove('show');
+  }
+}
+
+function filterCat(cat){
+  curCat=cat;highlightedId=-1;
+  render(cat,-1);
+  if(cat!=='all'){
+    var group=L.featureGroup(markers);
+    if(markers.length>0)map.fitBounds(group.getBounds().pad(0.15),{animate:true});
+  } else {
+    map.setView([25.35,119.00],10,{animate:true});
+  }
+}
+
+document.querySelectorAll('.cat-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.cat-btn').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active');
+    filterCat(btn.dataset.cat);
+    document.getElementById('searchInput').value='';
+    hideDropdown();
+  });
+});
+
+var dd=document.getElementById('dropdown');
+var si=document.getElementById('searchInput');
+
+function buildDropdown(filtered){
+  var groups={};
+  filtered.forEach(function(item){
+    if(!groups[item.s.c])groups[item.s.c]=[];
+    groups[item.s.c].push(item);
+  });
+  var html='';
+  Object.keys(CAT_COLORS).forEach(function(cat){
+    if(!groups[cat])return;
+    html+='<div class="dd-group"><div class="dd-group-title" style="color:'+CAT_COLORS[cat]+'">'+cat+'</div>';
+    groups[cat].forEach(function(item){
+      html+='<div class="dd-item" data-id="'+item.s.id+'">'
+        +'<div class="dot" style="background:'+CAT_COLORS[item.s.c]+'"></div>'
+        +'<div class="name">'+item.s.n+'</div>'
+        +'<div class="cat-label">No.'+(item.i+1)+'</div></div>';
+    });
+    html+='</div>';
+  });
+  dd.innerHTML=html;
+  dd.querySelectorAll('.dd-item').forEach(function(el){
+    el.addEventListener('click',function(){
+      var id=parseInt(el.dataset.id);
+      highlightedId=id;
+      render('all',id);
+      si.value=spots[id].n;
+      hideDropdown();
+      document.querySelectorAll('.cat-btn').forEach(function(b){b.classList.remove('active');});
+    });
+  });
+}
+
+function showDropdown(){dd.classList.add('show');}
+function hideDropdown(){dd.classList.remove('show');}
+
+si.addEventListener('focus',function(){
+  var q=si.value.trim().toLowerCase();
+  var filtered=[];
+  spots.forEach(function(s,i){
+    if(!q||s.n.toLowerCase().indexOf(q)>=0)filtered.push({s:s,i:i});
+  });
+  buildDropdown(filtered);
+  showDropdown();
+});
+
+si.addEventListener('input',function(){
+  var q=si.value.trim().toLowerCase();
+  var filtered=[];
+  spots.forEach(function(s,i){
+    if(!q||s.n.toLowerCase().indexOf(q)>=0)filtered.push({s:s,i:i});
+  });
+  buildDropdown(filtered);
+  showDropdown();
+});
+
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.search-box'))hideDropdown();
+});
+
+render('all',-1);
+</script>
+</body>
+</html>
