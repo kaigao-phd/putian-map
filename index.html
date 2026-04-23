@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>莆田56个旅游景点地图</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:#f5f5f5;}
+#header{background:#fff;padding:12px 16px;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1000;}
+#header h1{font-size:16px;font-weight:600;color:#333;}
+#header span{font-size:13px;color:#888;}
+#map{width:100%;height:calc(100vh - 100px);}
+#filters{display:flex;gap:8px;padding:8px 16px;background:#fff;border-bottom:1px solid #e8e8e8;overflow-x:auto;}
+.fbtn{padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;font-size:13px;color:#555;cursor:pointer;white-space:nowrap;transition:all .2s;}
+.fbtn.active{background:#1D9E75;color:#fff;border-color:#1D9E75;}
+.leaflet-popup-content{margin:10px 12px!important;}
+.spot-name{font-weight:600;font-size:15px;color:#333;margin-bottom:4px;}
+.spot-cat{font-size:12px;color:#999;margin-bottom:10px;}
+.nav-btns{display:flex;gap:8px;}
+.nav-btn{flex:1;text-align:center;padding:8px 0;border-radius:8px;text-decoration:none;font-size:13px;font-weight:500;color:#fff;}
+.nav-gaode{background:#1D9E75;}
+.nav-baidu{background:#3385FF;}
+.legend{position:absolute;bottom:24px;left:12px;z-index:999;background:rgba(255,255,255,0.95);border-radius:10px;padding:10px 14px;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,0.15);}
+.legend-item{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.legend-item:last-child{margin-bottom:0;}
+.legend-dot{width:12px;height:12px;border-radius:50%;}
+#tile-switch{position:absolute;top:12px;right:12px;z-index:999;background:rgba(255,255,255,0.95);border-radius:8px;padding:6px 10px;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,0.15);cursor:pointer;border:1px solid #ddd;}
+</style>
+</head>
+<body>
+<div id="header">
+<h1>莆田旅游资源地图</h1>
+<span id="count">56个景点</span>
+</div>
+<div id="filters">
+<div class="fbtn active" onclick="filter('all',this)">全部</div>
+<div class="fbtn" onclick="filter('自然',this)">自然风光</div>
+<div class="fbtn" onclick="filter('人文',this)">人文景观</div>
+<div class="fbtn" onclick="filter('宗教',this)">宗教场所</div>
+</div>
+<div id="map"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+var spots = [
+{n:"湄洲岛妈祖祖庙",lat:25.0867,lng:119.0778,c:"宗教"},
+{n:"湄洲岛黄金沙滩",lat:25.0750,lng:119.0850,c:"自然"},
+{n:"九鲤湖风景区",lat:25.5200,lng:118.8700,c:"自然"},
+{n:"九龙谷森林公园",lat:25.4800,lng:118.9300,c:"自然"},
+{n:"菜溪岩风景区",lat:25.6100,lng:118.7500,c:"自然"},
+{n:"广化寺",lat:25.4180,lng:119.0020,c:"宗教"},
+{n:"南少林寺",lat:25.4700,lng:119.0100,c:"宗教"},
+{n:"凤凰山公园",lat:25.4200,lng:119.0000,c:"自然"},
+{n:"木兰陂",lat:25.3950,lng:119.0250,c:"人文"},
+{n:"莆田工艺美术城",lat:25.3600,lng:119.0800,c:"人文"},
+{n:"绶溪公园",lat:25.4500,lng:119.0200,c:"自然"},
+{n:"天云洞",lat:25.3200,lng:119.1200,c:"自然"},
+{n:"瑞云山森林公园",lat:25.5500,lng:118.8100,c:"自然"},
+{n:"贤良港天后祖祠",lat:25.1100,lng:119.0600,c:"宗教"},
+{n:"仙水洋",lat:25.5800,lng:118.7800,c:"自然"},
+{n:"东圳水库",lat:25.4600,lng:118.9500,c:"自然"},
+{n:"壶公山",lat:25.3700,lng:119.0400,c:"自然"},
+{n:"囊山慈寿寺",lat:25.5100,lng:119.0900,c:"宗教"},
+{n:"龟山寺",lat:25.5400,lng:118.8500,c:"宗教"},
+{n:"石室岩寺",lat:25.4250,lng:118.9950,c:"宗教"},
+{n:"三清殿",lat:25.4350,lng:119.0080,c:"宗教"},
+{n:"梅妃故里",lat:25.3500,lng:119.0900,c:"人文"},
+{n:"莆禧古城",lat:25.2800,lng:119.1500,c:"人文"},
+{n:"天中万寿塔",lat:25.3400,lng:119.1000,c:"人文"},
+{n:"镇海堤",lat:25.3100,lng:119.1300,c:"人文"},
+{n:"东吴石塔",lat:25.3000,lng:119.1400,c:"人文"},
+{n:"夹祭草堂",lat:25.4100,lng:119.0150,c:"人文"},
+{n:"仙游文庙",lat:25.3620,lng:118.6920,c:"人文"},
+{n:"龙华寺",lat:25.3800,lng:118.7200,c:"宗教"},
+{n:"龙华双塔",lat:25.3810,lng:118.7210,c:"人文"},
+{n:"金钟水库",lat:25.4400,lng:118.9200,c:"自然"},
+{n:"文峰宫",lat:25.4320,lng:119.0060,c:"宗教"},
+{n:"莆田市博物馆",lat:25.4380,lng:119.0100,c:"人文"},
+{n:"莆田市科技馆",lat:25.4420,lng:119.0130,c:"人文"},
+{n:"凌云殿",lat:25.3150,lng:119.1250,c:"宗教"},
+{n:"海峡艺雕旅游城",lat:25.4050,lng:118.6300,c:"人文"},
+{n:"玉湖公园",lat:25.4280,lng:119.0180,c:"自然"},
+{n:"萩芦溪漂流",lat:25.5300,lng:119.0500,c:"自然"},
+{n:"蒜溪生态公园",lat:25.5000,lng:119.0600,c:"自然"},
+{n:"白塘湖公园",lat:25.3900,lng:119.0600,c:"自然"},
+{n:"梅峰寺",lat:25.4330,lng:119.0050,c:"宗教"},
+{n:"东岩山公园",lat:25.4400,lng:119.0100,c:"自然"},
+{n:"古谯楼",lat:25.4340,lng:119.0070,c:"人文"},
+{n:"兴化府城隍庙",lat:25.4360,lng:119.0090,c:"宗教"},
+{n:"元妙观",lat:25.4310,lng:119.0040,c:"宗教"},
+{n:"延寿桥",lat:25.4450,lng:119.0050,c:"人文"},
+{n:"宁海桥",lat:25.3550,lng:119.0700,c:"人文"},
+{n:"仙游九鲤湖瀑布",lat:25.5220,lng:118.8720,c:"自然"},
+{n:"大蜚山森林公园",lat:25.3700,lng:118.7000,c:"自然"},
+{n:"天马山",lat:25.3650,lng:118.7100,c:"自然"},
+{n:"麦斜岩",lat:25.5600,lng:118.8200,c:"自然"},
+{n:"百松村",lat:25.5700,lng:118.7600,c:"人文"},
+{n:"坝下工艺城",lat:25.3580,lng:118.6800,c:"人文"},
+{n:"榜头古典家具城",lat:25.3560,lng:118.6750,c:"人文"},
+{n:"后黄村",lat:25.3650,lng:119.0650,c:"人文"},
+{n:"紫霄洞",lat:25.4150,lng:118.9900,c:"自然"}
+];
+
+var map = L.map('map',{zoomControl:true}).setView([25.42,118.9],10);
+
+var tileGaode = L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',{
+  subdomains:['1','2','3','4'],maxZoom:18,attribution:'高德地图'
+});
+
+var tileSatellite = L.tileLayer('https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',{
+  subdomains:['1','2','3','4'],maxZoom:18,attribution:'高德卫星'
+});
+
+tileGaode.addTo(map);
+var currentTile = 'road';
+
+var switchBtn = document.createElement('div');
+switchBtn.id = 'tile-switch';
+switchBtn.textContent = '切换卫星图';
+switchBtn.onclick = function(){
+  if(currentTile==='road'){
+    map.removeLayer(tileGaode);
+    tileSatellite.addTo(map);
+    currentTile='satellite';
+    switchBtn.textContent='切换路线图';
+  } else {
+    map.removeLayer(tileSatellite);
+    tileGaode.addTo(map);
+    currentTile='road';
+    switchBtn.textContent='切换卫星图';
+  }
+};
+document.getElementById('map').appendChild(switchBtn);
+
+var legendDiv = document.createElement('div');
+legendDiv.className='legend';
+legendDiv.innerHTML='<div class="legend-item"><div class="legend-dot" style="background:#1D9E75"></div>自然风光</div><div class="legend-item"><div class="legend-dot" style="background:#534AB7"></div>宗教场所</div><div class="legend-item"><div class="legend-dot" style="background:#D85A30"></div>人文景观</div>';
+document.getElementById('map').appendChild(legendDiv);
+
+var markers = [];
+
+function getColor(c){
+  if(c==='自然') return '#1D9E75';
+  if(c==='宗教') return '#534AB7';
+  return '#D85A30';
+}
+
+function render(cat){
+  markers.forEach(function(m){map.removeLayer(m);});
+  markers=[];
+  var list = cat==='all' ? spots : spots.filter(function(s){return s.c===cat;});
+  list.forEach(function(s,i){
+    var icon = L.divIcon({
+      className:'',
+      html:'<div style="width:26px;height:26px;border-radius:50%;background:'+getColor(s.c)+';color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);">'+(i+1)+'</div>',
+      iconSize:[26,26],iconAnchor:[13,13]
+    });
+    var m = L.marker([s.lat,s.lng],{icon:icon}).addTo(map);
+    var popupHtml = '<div class="spot-name">'+s.n+'</div>'
+      +'<div class="spot-cat">类别：'+s.c+'</div>'
+      +'<div class="nav-btns">'
+      +'<a class="nav-btn nav-gaode" href="https://uri.amap.com/marker?position='+s.lng+','+s.lat+'&name='+encodeURIComponent(s.n)+'&callnative=1" target="_blank">高德导航</a>'
+      +'<a class="nav-btn nav-baidu" href="https://api.map.baidu.com/marker?location='+s.lat+','+s.lng+'&title='+encodeURIComponent(s.n)+'&content='+encodeURIComponent(s.n)+'&output=html&coord_type=wgs84&src=webapp.putian.tourism" target="_blank">百度导航</a>'
+      +'</div>';
+    m.bindPopup(popupHtml,{maxWidth:260});
+    markers.push(m);
+  });
+  document.getElementById('count').textContent=list.length+'个景点';
+}
+
+function filter(cat,el){
+  document.querySelectorAll('.fbtn').forEach(function(b){b.classList.remove('active');});
+  el.classList.add('active');
+  render(cat);
+}
+
+render('all');
+</script>
+</body>
+</html>
